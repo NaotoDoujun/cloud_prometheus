@@ -1,0 +1,35 @@
+global:
+  resolve_timeout: 3m
+
+route:
+  receiver: 'slack'
+  group_by: ['alertname', 'severity']
+  group_wait: 10s
+  group_interval:  2m
+  repeat_interval: 15m
+  routes:
+    - receiver: 'slack_critical'
+      group_wait: 5s
+      group_interval: 30s
+      repeat_interval: 5m
+      match:
+        severity: critical
+
+receivers:
+  - name: 'slack'
+    slack_configs:
+    - api_url: 'http://host.docker.internal:8065/hooks/wngq7637tpb3ixhjgchbribsbe'
+      channel: '#warning'
+      username: 'warning'
+      icon_emoji: ':warning:'
+      text: '{{ if eq .Status "firing" }}{{ .CommonAnnotations.firing_text }}{{ else }}{{ .CommonAnnotations.resolved_text }}{{ end }}'
+      send_resolved: true
+
+  - name: 'slack_critical'
+    slack_configs:
+    - api_url: 'http://host.docker.internal:8065/hooks/wngq7637tpb3ixhjgchbribsbe'
+      channel: '#critical'
+      username: 'critical'
+      icon_emoji: ':exclamation:'
+      text: '{{ if eq .Status "firing" }}{{ .CommonAnnotations.firing_text }}{{ else }}{{ .CommonAnnotations.resolved_text }}{{ end }}'
+      send_resolved: true
