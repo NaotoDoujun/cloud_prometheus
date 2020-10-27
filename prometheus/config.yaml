@@ -1,0 +1,22 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    datacenter: global
+
+scrape_configs:
+  - job_name: "federate"
+    honor_labels: true
+    metrics_path: "/federate"
+    params:
+      "match[]":
+        - '{__name__=~".+"}'
+    static_configs:
+      - targets: ["192.168.10.7:9090"]
+  - job_name: "pushgateway"
+    honor_labels: true
+    static_configs:
+      - targets: ["pushgateway:9091"]
+        labels:
+          environment: "cloud"
+          category: "pushgateway"

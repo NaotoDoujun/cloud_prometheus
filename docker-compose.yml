@@ -1,0 +1,110 @@
+version: "3"
+services:
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    volumes:
+      - ./prometheus:/etc/prometheus
+    command: --config.file=/etc/prometheus/config.yaml
+    ports:
+      - 9090:9090
+    restart: "always"
+  pushgateway:
+    image: prom/pushgateway
+    container_name: pushgateway
+    ports:
+      - 9091:9091
+    restart: "always"
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - 3000:3000
+    restart: "always"
+  loki:
+    image: grafana/loki
+    container_name: loki
+    ports:
+      - 3100:3100
+    restart: "always"
+  promtail:
+    image: grafana/promtail
+    volumes:
+      - ./promtail:/etc/promtail
+      - ./logs:/var/log
+    container_name: promtail
+    command: --config.file=/etc/promtail/config.yaml
+    ports:
+      - 9080:9080
+    restart: "always"
+  alertmanager:
+    image: prom/alertmanager
+    container_name: alertmanager
+    volumes:
+      - ./alertmanager:/etc/alertmanager
+    command: --config.file=/etc/alertmanager/config.yaml
+    ports:
+      - 9093:9093
+    restart: "always"
+  gitlab:
+    image: gitlab/gitlab-ce
+    container_name: gitlab
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'https://192.168.10.5:8001'
+        registry_external_url 'https://192.168.10.5:5050'
+        gitlab_rails['registry_enabled'] = true
+        gitlab_rails['time_zone'] = "Asia/Tokyo"
+        gitlab_rails['gitlab_shell_ssh_port'] = 2222
+        unicorn['worker_timeout'] = 60
+        unicorn['worker_processes'] = 3
+        logging['logrotate_frequency'] = "weekly"
+        logging['logrotate_rotate'] = 52
+        logging['logrotate_compress'] = "compress"
+        logging['logrotate_method'] = "copytruncate"
+        nginx['listen_port'] = 443
+        nginx['redirect_http_to_https'] = true
+        nginx['ssl_certificate'] = "/etc/gitlab/ssl/192.168.10.5.crt"
+        nginx['ssl_certificate_key'] = "/etc/gitlab/ssl/192.168.10.5.key"
+        mattermost['enable'] = false
+        prometheus['enable'] = false
+        alertmanager['enable'] = false
+        node_exporter['enable'] = false
+        redis_exporter['enable'] = false
+        postgres_exporter['enable'] = false
+        gitlab_exporter['enable'] = false
+        grafana['enable'] = false
+    volumes:
+      - ./gitlab/config:/etc/gitlab
+      - ./gitlab/logs:/var/log/gitlab
+      - ./gitlab/data:/var/opt/gitlab
+    logging:
+      options:
+        max-size: "4M"
+        max-file: "14"
+    ports:
+      - "2222:22"
+      - "8001:443"
+      - "5050:5050"
+    restart: "always"
+    privileged: true
+  runner:
+    image: gitlab/gitlab-runner
+    container_name: gitlab-runner
+    links:
+      - gitlab
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./gitlab-runner/config:/etc/gitlab-runner
+    logging:
+      options:
+        max-size: "4M"
+        max-file: "14"
+    restart: "always"
+  mattermost:
+    image: mattermost/mattermost-preview
+    container_name: mattermost
+    command: --publish 8065:8065 --add-host dockerhost:127.0.0.1
+    ports:
+      - 8065:8065
+    restart: "always"
